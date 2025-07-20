@@ -1,0 +1,24 @@
+// File: .vscode/tasks.json
+// Description: VS Code task to run the godef tool on the selected text.
+
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run GoDef Lookup",
+            "type": "shell",
+            "command": "godef",
+            "args": [
+                "${selectedText}"
+            ],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": []
+        }
+    ]
+}

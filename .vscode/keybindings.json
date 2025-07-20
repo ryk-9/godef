@@ -1,0 +1,10 @@
+// File: .vscode/keybindings.json
+// Description: Binds a keyboard shortcut to the VS Code task.
+
+[
+    {
+        "key": "ctrl+shift+y",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Run GoDef Lookup"
+    }
+]
