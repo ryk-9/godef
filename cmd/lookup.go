@@ -11,14 +11,43 @@ import (
 	formatter "godef/int"
 )
 
-// executeLookup handles fetching data from both dictionary and thesaurus APIs.
-func executeLookup(word string) {
-	// Create channels to receive data from concurrent API calls.
+// executeLookup handles fetching data from the dictionary (and optionally thesaurus) APIs.
+func executeLookup(word string, verbose bool) {
+	if verbose {
+		executeLookupVerbose(word)
+	} else {
+		executeLookupDefinition(word)
+	}
+}
+
+func executeLookupDefinition(word string) {
+	dictChan := make(chan []api.DictionaryResponse)
+	errChan := make(chan error, 1)
+
+	go func() {
+		data, err := api.FetchDictionaryData(word)
+		if err != nil {
+			errChan <- fmt.Errorf("dictionary error: %w", err)
+			return
+		}
+		dictChan <- data
+	}()
+
+	select {
+	case data := <-dictChan:
+		formatter.PrintResults(data, nil, api.DatamuseResult{})
+	case err := <-errChan:
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func executeLookupVerbose(word string) {
 	dictChan := make(chan []api.DictionaryResponse)
 	thesChan := make(chan []api.ThesaurusResponse)
-	errChan := make(chan error, 2) // Buffer for two potential errors
+	datuChan := make(chan api.DatamuseResult)
+	errChan := make(chan error, 3)
 
-	// Fetch dictionary and thesaurus data concurrently.
 	go func() {
 		data, err := api.FetchDictionaryData(word)
 		if err != nil {
@@ -37,22 +66,32 @@ func executeLookup(word string) {
 		thesChan <- data
 	}()
 
+	go func() {
+		data, err := api.FetchDatamuseData(word)
+		if err != nil {
+			errChan <- fmt.Errorf("datamuse error: %w", err)
+			return
+		}
+		datuChan <- data
+	}()
+
 	var dictData []api.DictionaryResponse
 	var thesData []api.ThesaurusResponse
+	var datuData api.DatamuseResult
 
-	// Wait for both API calls to complete.
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 3; i++ {
 		select {
 		case data := <-dictChan:
 			dictData = data
 		case data := <-thesChan:
 			thesData = data
+		case data := <-datuChan:
+			datuData = data
 		case err := <-errChan:
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
 		}
 	}
 
-	// Pass both results to the formatter for printing.
-	formatter.PrintResults(dictData, thesData)
+	formatter.PrintResults(dictData, thesData, datuData)
 }
